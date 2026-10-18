@@ -1,0 +1,7 @@
+{
+  "type": "general",
+  "appCode": "file-download-tool",
+  "appName": "文件下载工具",
+  "appDescription": "依据服务器文件清单与本地清单的版本比对结果增量下载文件，支持 http(s)/file 协议、Basic 认证、大文件断点续传与 MD5 校验",
+  "createdAt": "2026-10-18T13:55:09.240987Z"
+}

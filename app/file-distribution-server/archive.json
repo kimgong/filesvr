@@ -1,0 +1,7 @@
+{
+  "type": "general",
+  "appCode": "file-distribution-server",
+  "appName": "文件分发服务器",
+  "appDescription": "监听指定目录文件变化并生成 files.manifest 清单，为订阅者提供带 Basic 认证的 HTTP 下载与目录浏览服务",
+  "createdAt": "2026-10-18T13:09:19.904785Z"
+}
