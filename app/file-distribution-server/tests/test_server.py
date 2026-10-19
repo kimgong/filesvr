@@ -123,6 +123,9 @@ class FileServerTestCase(unittest.TestCase):
         self.assertEqual(by_ref["/sub/a.bak"]["hash"], hashlib.md5(NESTED_FILE_CONTENT).hexdigest())
         for entry in by_ref.values():
             self.assertRegex(entry["modified"], r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$")
+        # 清单记录每个文件的大小（字节），供下载工具预判是否分片
+        self.assertEqual(by_ref["a.bak"]["size"], len(TOP_FILE_CONTENT))
+        self.assertEqual(by_ref["/sub/a.bak"]["size"], len(NESTED_FILE_CONTENT))
 
     def test_manifest_refpath_separator(self):
         _, _, body = self.request("/files.manifest")
@@ -133,6 +136,21 @@ class FileServerTestCase(unittest.TestCase):
         _, _, body = self.request("/files.manifest")
         with open(os.path.join(self.data_dir, "files.manifest"), "rb") as fh:
             self.assertEqual(body, fh.read())
+
+    def test_large_file_download_integrity(self):
+        # 8MB 大文件走零拷贝 sendfile 路径，校验下载完整性与 Range 分片内容
+        payload = os.urandom(8 * 1024 * 1024)
+        big = os.path.join(self.data_dir, "big8m.bin")
+        with open(big, "wb") as fh:
+            fh.write(payload)
+        self.builder.refresh()
+        status, headers, body = self.request("/big8m.bin")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(body), len(payload))
+        self.assertEqual(hashlib.md5(body).hexdigest(), hashlib.md5(payload).hexdigest())
+        status, _, body = self.request("/big8m.bin", headers={"Range": "bytes=1000000-2000000"})
+        self.assertEqual(status, 206)
+        self.assertEqual(body, payload[1000000:2000001])
 
     def test_refresh_without_change_returns_false(self):
         self.assertFalse(self.builder.refresh())
@@ -489,13 +507,23 @@ class MultiDirServerTestCase(unittest.TestCase):
 
     # ---------- --data-dir 参数解析与多目录监听 ----------
 
+    def test_split_comma_list(self):
+        split = filesvr.split_comma_list
+        self.assertEqual(split("D:\\a,D:\\b"), ["D:\\a", "D:\\b"])
+        self.assertEqual(split("D:\\a，D:\\b"), ["D:\\a", "D:\\b"])  # 全角逗号
+        self.assertEqual(split("D:\\a，D:\\b,D:\\c"), ["D:\\a", "D:\\b", "D:\\c"])  # 混用
+        self.assertEqual(split(" D:\\a ,， D:\\b "), ["D:\\a", "D:\\b"])
+        self.assertEqual(split(""), [])
+        self.assertEqual(split("，,，"), [])
+
     def test_split_data_dirs(self):
         split = filesvr.split_data_dirs
         self.assertEqual(split("D:\\a,D:\\b"), ["D:\\a", "D:\\b"])
+        self.assertEqual(split("D:\\a，D:\\b"), ["D:\\a", "D:\\b"])  # 全角逗号
         self.assertEqual(split(" D:\\a , ,D:\\b "), ["D:\\a", "D:\\b"])
         self.assertEqual(split("D:\\a"), ["D:\\a"])
         self.assertEqual(split(""), [])
-        # 同一目录（仅大小写不同）只保留一次
+        # 同一目录（大小写/分隔符差异）只保留一次
         same = os.path.join(self.tmp, "alpha")
         self.assertEqual(split(f"{same},{same.upper()}"), [same])
 

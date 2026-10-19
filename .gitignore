@@ -46,6 +46,7 @@ coverage/
 
 # Cache
 .cache/
+__pycache__
 .parcel-cache/
 .eslintcache
 .stylelintcache

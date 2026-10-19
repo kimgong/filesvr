@@ -1,2 +1,2 @@
-python app/file-distribution-server/main.py   --user kim --pass Kd2025 --data-dir D:\Workspace\lingee\db  --port 8234 --interval 60
+python app/file-distribution-server/main.py   --user kim --pass Kd2025  --port 8234 --interval 60  --dir-alias db,db2 --data-dir D:\Workspace\lingee\data\\source\db,D:\Workspace\lingee\data\\source\db2
 pause
